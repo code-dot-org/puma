@@ -390,13 +390,19 @@ EOF
     ret
   end
 
+  def test_first_data_timeout
+    @server.first_data_timeout = 0
+    server_run
+    assert_proper_timeout(@server.first_data_timeout) { new_connection.gets rescue nil }
+  end
+
   def test_timeout_in_data_phase
-    @server.first_data_timeout = 2
+    @server.between_bytes_timeout = 0.1
     server_run
 
     sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\n"
 
-    data = assert_proper_timeout(@server.first_data_timeout) { sock.gets }
+    data = assert_proper_timeout(@server.between_bytes_timeout) { sock.gets }
 
     assert_equal "HTTP/1.1 408 Request Timeout\r\n", data
   end
@@ -428,16 +434,17 @@ EOF
   end
 
   def test_no_timeout_after_data_received
-    @server.first_data_timeout = 10
-    @server.between_bytes_timeout = 4
+    @server.first_data_timeout = 1
     server_run
 
-    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 10\r\n\r\n"
-    sleep 0.1
+    sock = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 11\r\n\r\n"
+    sleep 0.5
 
     sock << "hello"
-    sleep 2
+    sleep 0.5
     sock << "world"
+    sleep 0.5
+    sock << "!"
 
     data = sock.gets
 

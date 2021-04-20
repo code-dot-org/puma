@@ -108,8 +108,9 @@ module Puma
       !@read_header
     end
 
-    def set_timeout(val)
-      @timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + val
+    def set_timeout(timeout, between_bytes_timeout = nil)
+      timeout = between_bytes_timeout if between_bytes_timeout && @parsed_bytes > 0
+      @timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
     end
 
     # Number of seconds until the timeout elapses.
@@ -207,8 +208,10 @@ module Puma
 
     def finish(first_data_timeout, between_bytes_timeout)
       return if @ready
-      timeout = @parsed_bytes > 0 ? between_bytes_timeout : first_data_timeout
-      IO.select([@to_io], nil, nil, timeout) || timeout! until try_to_finish
+      until try_to_finish
+        timeout = @parsed_bytes > 0 ? between_bytes_timeout : first_data_timeout
+        IO.select([@to_io], nil, nil, timeout) || timeout!
+      end
     end
 
     def timeout!

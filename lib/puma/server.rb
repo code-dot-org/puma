@@ -421,7 +421,7 @@ module Puma
         if @queue_requests &&
           !client.eagerly_finish
 
-          client.set_timeout(@first_data_timeout)
+          client.set_timeout(@first_data_timeout, @between_bytes_timeout)
           if @reactor.add client
             close_socket = false
             return false
